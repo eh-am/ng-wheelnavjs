@@ -4,7 +4,7 @@
     "Mohammed Matar <mohammedmatar@yandex.com>"
   ],
   "description": "",
-  "main": "dist/ng-wheelnav.js",
+  "main": "ng-wheelnav.js",
   "license": "MIT",
   "homepage": "mohammedmatar.github.io",
   "ignore": [
