@@ -13,16 +13,8 @@
 /* Licensed under MIT (https://github.com/softwaretailoring/wheelnav/blob/master/LICENSE)  */
 /* ======================================================================================= */
 
-/* ======================================================================================= */
-/* Documentation: http://wheelnavjs.softwaretailoring.net/documentation/core.html          */
-/* ======================================================================================= */
 
-wheelnav = function (config) {
-
-    divId =  config.divId;
-    raphael = config.raphael;
-    divWidth = config.divWidth;
-    divHeight = config.divHeight;
+wheelnav = function (divId, raphael, divWidth, divHeight) {
 
     this.holderId = "wheel";
 
@@ -204,7 +196,14 @@ wheelnav = function (config) {
     this.sliceInitPathFunction = null;
     this.sliceInitTransformFunction = null;
 
-    this.parseWheel(holderDiv, config);
+    this.keynavigateEnabled = false;
+    this.keynavigateOnlyFocus = false;
+    this.keynavigateDownCode = 37; // left arrow
+    this.keynavigateDownCodeAlt = 40; // down arrow
+    this.keynavigateUpCode = 39; // right arrow
+    this.keynavigateUpCodeAlt = 38; // up arrow
+
+    this.parseWheel(holderDiv);
 
     return this;
 };
@@ -279,6 +278,53 @@ wheelnav.prototype.createWheel = function (titles, withSpread) {
         this.navItems[i].createNavItem();
     }
 
+    if (this.keynavigateEnabled) {
+        var thiswheelnav = this;
+        var keyelement = window;
+
+        if (this.keynavigateOnlyFocus) {
+            keyelement = document.getElementById(this.holderId);
+            if (!keyelement.hasAttribute("tabindex")) {
+                keyelement.setAttribute("tabindex", 0);
+            }
+        }
+
+        keyelement.addEventListener("keydown", this.keyNavigateFunction =  function (e) {
+            e = e || window.e;
+            var keyCodeEvent = e.which || e.keyCode;
+            if ([thiswheelnav.keynavigateDownCode, thiswheelnav.keynavigateDownCodeAlt, thiswheelnav.keynavigateUpCode, thiswheelnav.keynavigateUpCodeAlt].indexOf(e.keyCode) > -1) {
+                e.preventDefault();
+            }
+
+            var keynavigate = null;
+
+            if (keyCodeEvent === thiswheelnav.keynavigateUpCode || keyCodeEvent === thiswheelnav.keynavigateUpCodeAlt) {
+                if (thiswheelnav.currentClick === thiswheelnav.navItemCount - 1) {
+                    keynavigate = 0;
+                }
+                else {
+                    keynavigate = thiswheelnav.currentClick + 1;
+                }
+            }
+            if (keyCodeEvent === thiswheelnav.keynavigateDownCode || keyCodeEvent === thiswheelnav.keynavigateDownCodeAlt) {
+                if (thiswheelnav.currentClick === 0) {
+                    keynavigate = thiswheelnav.navItemCount - 1;
+                }
+                else {
+                    keynavigate = thiswheelnav.currentClick - 1;
+                }
+            }
+
+            if (keynavigate !== null) {
+                if (thiswheelnav.navItems[keynavigate].navigateFunction !== null) {
+                    thiswheelnav.navItems[keynavigate].navigateFunction();
+                }
+
+                thiswheelnav.navigateWheel(keynavigate);
+            }
+        });
+    }
+
     this.spreader = new spreader(this);
 
     this.marker = new marker(this);
@@ -290,6 +336,23 @@ wheelnav.prototype.createWheel = function (titles, withSpread) {
     }
 
     return this;
+};
+
+wheelnav.prototype.removeWheel = function () {
+    this.raphael.remove();
+
+    if (this.keynavigateEnabled) {
+        var keyelement = window;
+
+        if (this.keynavigateOnlyFocus) {
+            keyelement = document.getElementById(this.holderId);
+            if (keyelement.hasAttribute("tabindex")) {
+                keyelement.removeAttribute("tabindex");
+            }
+        }
+
+        keyelement.removeEventListener("keydown", this.keyNavigateFunction);
+    }
 };
 
 wheelnav.prototype.refreshWheel = function (withPathAndTransform) {
@@ -492,12 +555,11 @@ wheelnav.prototype.getMarkerId = function () {
 /* Documentation: http://wheelnavjs.softwaretailoring.net/documentation/html5.html         */
 /* ======================================================================================= */
 
-wheelnav.prototype.parseWheel = function (holderDiv, config) {
-    if(config.dataWheelnav === undefined || null){config.dataWheelnav = false;}
+wheelnav.prototype.parseWheel = function (holderDiv) {
     if (holderDiv !== undefined &&
         holderDiv !== null) {
         //data-wheelnav attribute is required
-        var wheelnavData = config.dataWheelNav;
+        var wheelnavData = holderDiv.hasAttribute("data-wheelnav");
         if (wheelnavData) {
             var parsedNavItems = [];
             var parsedNavItemsHref = [];
@@ -505,29 +567,30 @@ wheelnav.prototype.parseWheel = function (holderDiv, config) {
             var onlyInit = false;
 
             //data-wheelnav-slicepath
-            var wheelnavSlicepath = config.slicePath;
+            var wheelnavSlicepath = holderDiv.getAttribute("data-wheelnav-slicepath");
             if (wheelnavSlicepath !== null) {
                 if (slicePath()[wheelnavSlicepath] !== undefined) {
                     this.slicePathFunction = slicePath()[wheelnavSlicepath];
                 }
             }
             //data-wheelnav-colors
-            if(config.colors !== undefined ){
-              this.colors = config.colors.split(',');
+            var wheelnavColors = holderDiv.getAttribute("data-wheelnav-colors");
+            if (wheelnavColors !== null) {
+                this.colors = wheelnavColors.split(',');
             }
             //data-wheelnav-wheelradius
-            var wheelnavWheelradius = (config.radius !== undefined) ? config.radius : null;
+            var wheelnavWheelradius = holderDiv.getAttribute("data-wheelnav-wheelradius");
             if (wheelnavWheelradius !== null) {
                 this.wheelRadius = Number(wheelnavWheelradius);
             }
             //data-wheelnav-navangle
-            var wheelnavNavangle = (config.angle !== undefined) ? config.angle : null;
+            var wheelnavNavangle = holderDiv.getAttribute("data-wheelnav-navangle");
             if (wheelnavNavangle !== null) {
                 this.navAngle = Number(wheelnavNavangle);
             }
             //data-wheelnav-rotateoff
-            var wheelnavRotateOff = config.rotateOff;
-            if (wheelnavRotateOff === true) {
+            var wheelnavRotateOff = holderDiv.getAttribute("data-wheelnav-rotateoff");
+            if (wheelnavRotateOff !== null) {
                 this.clickModeRotate = false;
             }
             //data-wheelnav-cssmode
@@ -536,108 +599,112 @@ wheelnav.prototype.parseWheel = function (holderDiv, config) {
                 this.cssMode = true;
             }
             //data-wheelnav-spreader
-            var wheelnavSpreader = config.spreader;
-            if (wheelnavSpreader === true) {
+            var wheelnavSpreader = holderDiv.getAttribute("data-wheelnav-spreader");
+            if (wheelnavSpreader !== null) {
                 this.spreaderEnable = true;
             }
             //data-wheelnav-spreaderradius
-            var wheelnavSpreaderRadius = config.spreaderRadius;
+            var wheelnavSpreaderRadius = holderDiv.getAttribute("data-wheelnav-spreaderradius");
             if (wheelnavSpreaderRadius !== null) {
                 this.spreaderRadius = Number(wheelnavSpreaderRadius);
             }
             //data-wheelnav-spreaderpath
-            var wheelnavSpreaderPath = config.spreaderPath;
+            var wheelnavSpreaderPath = holderDiv.getAttribute("data-wheelnav-spreaderpath");
             if (wheelnavSpreaderPath !== null) {
                 if (markerPath()[wheelnavSpreaderPath] !== undefined) {
                     this.spreaderPathFunction = spreaderPath()[wheelnavSpreaderPath];
                 }
             }
             //data-wheelnav-marker
-            var wheelnavMarker = config.marker;
-            if (wheelnavMarker === true) {
+            var wheelnavMarker = holderDiv.getAttribute("data-wheelnav-marker");
+            if (wheelnavMarker !== null) {
                 this.markerEnable = true;
             }
             //data-wheelnav-markerpath
-            var wheelnavMarkerPath = config.markerPath;
+            var wheelnavMarkerPath = holderDiv.getAttribute("data-wheelnav-markerpath");
             if (wheelnavMarkerPath !== null) {
                 if (markerPath()[wheelnavMarkerPath] !== undefined) {
                     this.markerPathFunction = markerPath()[wheelnavMarkerPath];
                 }
             }
             //data-wheelnav-titlewidth
-            var wheelnavTitleWidth = config.titleWidth;
+            var wheelnavTitleWidth = holderDiv.getAttribute("data-wheelnav-titlewidth");
             if (wheelnavTitleWidth !== null) {
                 this.titleWidth = Number(wheelnavTitleWidth);
             }
             //data-wheelnav-titleheight
-            var wheelnavTitleHeight = config.titleHeight;
+            var wheelnavTitleHeight = holderDiv.getAttribute("data-wheelnav-titleheight");
             if (wheelnavTitleHeight !== null) {
                 this.titleHeight = Number(wheelnavTitleHeight);
             }
+
+            //data-wheelnav-keynav
+            var wheelnavKeynav = holderDiv.getAttribute("data-wheelnav-keynav");
+            if (wheelnavKeynav !== null) {
+                this.keynavigateEnabled = true;
+            }
+            //data-wheelnav-keynavonlyfocus
+            var wheelnavKeynavOnlyfocus = holderDiv.getAttribute("data-wheelnav-keynavonlyfocus");
+            if (wheelnavKeynavOnlyfocus !== null) {
+                this.keynavigateOnlyFocus = true;
+            }
+            //data-wheelnav-keynavdowncode
+            var wheelnavKeynavDowncode = holderDiv.getAttribute("data-wheelnav-keynavdowncode");
+            if (wheelnavKeynavDowncode !== null) {
+                this.keynavigateDownCode = Number(wheelnavKeynavDowncode);
+            }
+            //data-wheelnav-keynavdowncodealt
+            var wheelnavKeynavDowncodeAlt = holderDiv.getAttribute("data-wheelnav-keynavdowncodealt");
+            if (wheelnavKeynavDowncodeAlt !== null) {
+                this.keynavigateDownCodeAlt = Number(wheelnavKeynavDowncodeAlt);
+            }
+            //data-wheelnav-keynavupcode
+            var wheelnavKeynavUpcode = holderDiv.getAttribute("data-wheelnav-keynavupcode");
+            if (wheelnavKeynavUpcode !== null) {
+                this.keynavigateUpCode = Number(wheelnavKeynavUpcode);
+            }
+            //data-wheelnav-keynavupcodealt
+            var wheelnavKeynavUpcodeAlt = holderDiv.getAttribute("data-wheelnav-keynavupcodealt");
+            if (wheelnavKeynavUpcodeAlt !== null) {
+                this.keynavigateUpCodeAlt = Number(wheelnavKeynavUpcodeAlt);
+            }
+
             //data-wheelnav-init
-            var wheelnavOnlyinit = config.init;
-            if (wheelnavOnlyinit === true) {
+            var wheelnavOnlyinit = holderDiv.getAttribute("data-wheelnav-init");
+            if (wheelnavOnlyinit !== null) {
                 onlyInit = true;
             }
 
+            for (var i = 0; i < holderDiv.children.length; i++) {
 
-
-          if(config.children !== undefined){
-            //noinspection JSDuplicatedDeclaration
-            for (var i = 0; i < config.children.length; i++) {
-
-              var wheelnavNavitemtext = config.children[i].text;
-              var wheelnavNavitemicon = config.children[i].icon;
-              var wheelnavNavitemimg =  config.children[i].imgSrc;
-              if (wheelnavNavitemtext !== null ||
-                wheelnavNavitemicon !== null ||
-                wheelnavNavitemimg !== null) {
-                //data-wheelnav-navitemtext
-                if (wheelnavNavitemtext !== null) {
-                  // bgChild(["data-wheelnav-navitemtext", wheelnavNavitemtext]);
-                  parsedNavItems.push(wheelnavNavitemtext);
-                }
-                //data-wheelnav-navitemicon
-                else if (wheelnavNavitemicon !== null) {
-                  if (icon[wheelnavNavitemicon] !== undefined) {
-                    // bgChild(["data-wheelnav-navitemicon", wheelnavNavitemicon]);
-                    parsedNavItems.push(icon[wheelnavNavitemicon]);
-                  }
-                  else {
-                    // bgChild(["data-wheelnav-navitemicon", wheelnavNavitemicon]);
-                    parsedNavItems.push(wheelnavNavitemicon);
-                  }
-                }
-                else if (wheelnavNavitemimg !== null) {
-                  // bgChild(["data-wheelnav-navitemimg", wheelnavNavitemimg]);
-                  parsedNavItems.push("imgsrc:" + wheelnavNavitemimg);
-                }
-                else {
-                  //data-wheelnav-navitemtext or data-wheelnav-navitemicon or data-wheelnav-navitemimg is required
-                  continue;
-                }
-
-                if(config.children !== undefined){
-                  //onmouseup event of navitem element for call it in the navigateFunction
-                  if (config.children[i].onmouseup !== undefined) {
-                    parsedNavItemsOnmouseup.push(config.children[i].onmouseup);
-                  }
-                  else {
-                    parsedNavItemsOnmouseup.push(null);
-                  }
-
-                  //parse inner <a> tag in navitem element for use href in navigateFunction
-                  var foundHref = false;
-                  for (var j = 0; j < config.children[i].length; j++) {
-                    if (config.children[i].children[j].getAttribute('href') !== undefined) {
-                      parsedNavItemsHref.push(holderDiv.children[i].children[j].getAttribute('href'));
+                var wheelnavNavitemtext = holderDiv.children[i].getAttribute("data-wheelnav-navitemtext");
+                var wheelnavNavitemicon = holderDiv.children[i].getAttribute("data-wheelnav-navitemicon");
+                var wheelnavNavitemimg = holderDiv.children[i].getAttribute("data-wheelnav-navitemimg");
+                if (wheelnavNavitemtext !== null ||
+                    wheelnavNavitemicon !== null ||
+                    wheelnavNavitemimg !== null) {
+                    //data-wheelnav-navitemtext
+                    if (wheelnavNavitemtext !== null) {
+                        parsedNavItems.push(wheelnavNavitemtext);
                     }
-                  }
-                  if (!foundHref) {
-                    parsedNavItemsHref.push(null);
-                  }
-                }else {
-                  //onmouseup event of navitem element for call it in the navigateFunction
+                    //data-wheelnav-navitemicon
+                    else if (wheelnavNavitemicon !== null) {
+                        if (icon[wheelnavNavitemicon] !== undefined) {
+                            parsedNavItems.push(icon[wheelnavNavitemicon]);
+                        }
+                        else {
+                            parsedNavItems.push(wheelnavNavitemicon);
+                        }
+                    }
+                    else if (wheelnavNavitemimg !== null) {
+                        parsedNavItems.push("imgsrc:" + wheelnavNavitemimg);
+                    }
+                    else {
+                        //data-wheelnav-navitemtext or data-wheelnav-navitemicon or data-wheelnav-navitemimg is required
+                        continue;
+                    }
+
+                    //onmouseup event of navitem element for call it in the navigateFunction
                     if (holderDiv.children[i].onmouseup !== undefined) {
                         parsedNavItemsOnmouseup.push(holderDiv.children[i].onmouseup);
                     }
@@ -656,60 +723,7 @@ wheelnav.prototype.parseWheel = function (holderDiv, config) {
                         parsedNavItemsHref.push(null);
                     }
                 }
-
-              }
-            }//end-for
-          }
-            // for (var i = 0; i < holderDiv.children.length; i++) {
-            //
-            //     var wheelnavNavitemtext = holderDiv.children[i].getAttribute("data-wheelnav-navitemtext");
-            //     var wheelnavNavitemicon = holderDiv.children[i].getAttribute("data-wheelnav-navitemicon");
-            //     var wheelnavNavitemimg = holderDiv.children[i].getAttribute("data-wheelnav-navitemimg");
-            //     if (wheelnavNavitemtext !== null ||
-            //         wheelnavNavitemicon !== null ||
-            //         wheelnavNavitemimg !== null) {
-            //         //data-wheelnav-navitemtext
-            //         if (wheelnavNavitemtext !== null) {
-            //             parsedNavItems.push(wheelnavNavitemtext);
-            //         }
-            //         //data-wheelnav-navitemicon
-            //         else if (wheelnavNavitemicon !== null) {
-            //             if (icon[wheelnavNavitemicon] !== undefined) {
-            //                 parsedNavItems.push(icon[wheelnavNavitemicon]);
-            //             }
-            //             else {
-            //                 parsedNavItems.push(wheelnavNavitemicon);
-            //             }
-            //         }
-            //         else if (wheelnavNavitemimg !== null) {
-            //             parsedNavItems.push("imgsrc:" + wheelnavNavitemimg);
-            //         }
-            //         else {
-            //             //data-wheelnav-navitemtext or data-wheelnav-navitemicon or data-wheelnav-navitemimg is required
-            //             continue;
-            //         }
-            //
-            //         //onmouseup event of navitem element for call it in the navigateFunction
-            //         if (holderDiv.children[i].onmouseup !== undefined) {
-            //             parsedNavItemsOnmouseup.push(holderDiv.children[i].onmouseup);
-            //         }
-            //         else {
-            //             parsedNavItemsOnmouseup.push(null);
-            //         }
-            //
-            //         //parse inner <a> tag in navitem element for use href in navigateFunction
-            //         var foundHref = false;
-            //         for (var j = 0; j < holderDiv.children[i].children.length; j++) {
-            //             if (holderDiv.children[i].children[j].getAttribute('href') !== undefined) {
-            //                 parsedNavItemsHref.push(holderDiv.children[i].children[j].getAttribute('href'));
-            //             }
-            //         }
-            //         if (!foundHref) {
-            //             parsedNavItemsHref.push(null);
-            //         }
-            //     }
-            // }
-            //
+            }
 
             if (parsedNavItems.length > 0) {
                 this.initWheel(parsedNavItems);
@@ -3041,7 +3055,7 @@ var sliceTransformCustomization = function () {
 
 
 ///#source 1 1 /js/source/spreader/wheelnav.spreader.js
-///#source 1 1 /js/source/spreader/wheelnav.spreader.lib.js
+///#source 1 1 /js/source/spreader/wheelnav.spreader.core.js
 /* ======================================================================================= */
 /* Spreader of wheel                                                                       */
 /* ======================================================================================= */
@@ -3578,7 +3592,7 @@ this.LineSpreader = function (helper, percent, custom) {
 
 
 ///#source 1 1 /js/source/marker/wheelnav.marker.js
-///#source 1 1 /js/source/marker/wheelnav.marker.lib.js
+///#source 1 1 /js/source/marker/wheelnav.marker.core.js
 /* ======================================================================================= */
 /* Marker of wheel                                                                         */
 /* ======================================================================================= */
