@@ -1,20 +1,20 @@
 {
   "name": "ng-wheelnav",
   "authors": [
-    "Mohammed Matar <mohammedmatar@yandex.com>"
+    "Mohammed Matar <mohammedmatar@yandex.com>",
+    "Eduardo Aleixo"
   ],
   "description": "",
-  "main": "ng-wheelnav.js",
+  "main": ["ng-wheelnav.js", "raphael.js"],
   "license": "MIT",
-  "homepage": "mohammedmatar.github.io",
+   "dependencies": {
+    "eve-raphael": "0.5.0"
+  },
   "ignore": [
     "**/.*",
     "node_modules",
     "bower_components",
     "test",
     "tests"
-  ],
-  "dependencies": {
-    "raphael": "2.2.7"
-  }
+  ]
 }
