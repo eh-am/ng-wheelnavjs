@@ -1326,7 +1326,7 @@ wheelnavItem.prototype.refreshNavItem = function (withPathAndTransform) {
         this.navSlice.attr(this.sliceHoverAttr).toFront();
         this.navLine.attr(this.lineHoverAttr).toFront();
         this.navTitle.attr(this.titleHoverAttr).toFront();
-        if (this.navClickableSlice !== null) { this.navClickableSlice.attr(this.sliceClickableHoverAttr).toFront(); }
+        // if (this.navClickableSlice !== null) { this.navClickableSlice.attr(this.sliceClickableHoverAttr).toFront(); }
     }
     else {
         this.navSlice.attr(this.slicePathAttr);
